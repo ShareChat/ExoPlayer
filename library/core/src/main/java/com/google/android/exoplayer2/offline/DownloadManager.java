@@ -17,6 +17,7 @@ package com.google.android.exoplayer2.offline;
 
 import static com.google.android.exoplayer2.offline.Download.FAILURE_REASON_NONE;
 import static com.google.android.exoplayer2.offline.Download.FAILURE_REASON_UNKNOWN;
+import static com.google.android.exoplayer2.offline.Download.HANDLE_EXCEPTION;
 import static com.google.android.exoplayer2.offline.Download.STATE_COMPLETED;
 import static com.google.android.exoplayer2.offline.Download.STATE_DOWNLOADING;
 import static com.google.android.exoplayer2.offline.Download.STATE_FAILED;
@@ -246,6 +247,12 @@ public final class DownloadManager {
    */
   public DownloadManager(
       Context context, WritableDownloadIndex downloadIndex, DownloaderFactory downloaderFactory) {
+    this(context, downloadIndex, downloaderFactory, false);
+  }
+
+  public DownloadManager(
+      Context context, WritableDownloadIndex downloadIndex, DownloaderFactory downloaderFactory,
+      boolean handleException) {
     this.context = context.getApplicationContext();
     this.downloadIndex = downloadIndex;
 
@@ -279,7 +286,7 @@ public final class DownloadManager {
 
     pendingMessages = 1;
     internalHandler
-        .obtainMessage(MSG_INITIALIZE, notMetRequirements, /* unused */ 0)
+        .obtainMessage(MSG_INITIALIZE, notMetRequirements, /* unused */ 0, handleException ? 1 : 0)
         .sendToTarget();
   }
 
@@ -734,7 +741,8 @@ public final class DownloadManager {
       switch (message.what) {
         case MSG_INITIALIZE:
           int notMetRequirements = message.arg1;
-          initialize(notMetRequirements);
+          int handleExceptionFlag = message.arg2;
+          initialize(notMetRequirements, handleExceptionFlag);
           break;
         case MSG_SET_DOWNLOADS_PAUSED:
           boolean downloadsPaused = message.arg1 != 0;
@@ -792,7 +800,7 @@ public final class DownloadManager {
           .sendToTarget();
     }
 
-    private void initialize(int notMetRequirements) {
+    private void initialize(int notMetRequirements, int handleExceptionFlag) {
       this.notMetRequirements = notMetRequirements;
       DownloadCursor cursor = null;
       try {
@@ -801,7 +809,15 @@ public final class DownloadManager {
             downloadIndex.getDownloads(
                 STATE_QUEUED, STATE_STOPPED, STATE_DOWNLOADING, STATE_REMOVING, STATE_RESTARTING);
         while (cursor.moveToNext()) {
-          downloads.add(cursor.getDownload());
+          if (handleExceptionFlag == HANDLE_EXCEPTION) {
+            try {
+              downloads.add(cursor.getDownload());
+            } catch (Exception ignore) {
+
+            }
+          } else {
+            downloads.add(cursor.getDownload());
+          }
         }
       } catch (IOException e) {
         Log.e(TAG, "Failed to load index.", e);

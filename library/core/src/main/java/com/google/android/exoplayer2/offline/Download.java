@@ -68,6 +68,8 @@ public final class Download {
   /** The download will restart after all downloaded data is removed. */
   public static final int STATE_RESTARTING = 7;
 
+  public static final int HANDLE_EXCEPTION = 1;
+
   /** Failure reasons. Either {@link #FAILURE_REASON_NONE} or {@link #FAILURE_REASON_UNKNOWN}. */
   @Documented
   @Retention(RetentionPolicy.SOURCE)
