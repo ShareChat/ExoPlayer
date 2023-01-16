@@ -49,13 +49,22 @@ import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.MediaMetadata;
 import com.google.android.exoplayer2.ParserException;
 import com.google.android.exoplayer2.RenderersFactory;
+import com.google.android.exoplayer2.database.ExoDatabaseProvider;
+import com.google.android.exoplayer2.offline.DefaultDownloadIndex;
+import com.google.android.exoplayer2.offline.DefaultDownloaderFactory;
+import com.google.android.exoplayer2.offline.DownloadManager;
 import com.google.android.exoplayer2.offline.DownloadService;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DataSourceInputStream;
 import com.google.android.exoplayer2.upstream.DataSpec;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
+import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
+import com.google.android.exoplayer2.upstream.cache.SimpleCache;
 import com.google.android.exoplayer2.util.Log;
 import com.google.android.exoplayer2.util.Util;
 import com.google.common.collect.ImmutableList;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -65,6 +74,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 /** An activity for selecting from a list of media samples. */
 public class SampleChooserActivity extends AppCompatActivity
@@ -85,6 +95,9 @@ public class SampleChooserActivity extends AppCompatActivity
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.sample_chooser_activity);
+
+    testDownloadManagerCreation();
+
     sampleAdapter = new SampleAdapter();
     sampleListView = findViewById(R.id.sample_list);
 
@@ -126,6 +139,23 @@ public class SampleChooserActivity extends AppCompatActivity
     } catch (IllegalStateException e) {
       DownloadService.startForeground(this, DemoDownloadService.class);
     }
+  }
+
+  private void testDownloadManagerCreation() {
+    File dir = getExternalFilesDir(null);
+    File downloadContentDirectory = new File(dir, "videoCache");
+    LeastRecentlyUsedCacheEvictor evictor = new LeastRecentlyUsedCacheEvictor(300 * 1024 * 1024);
+
+    ExoDatabaseProvider dbProvider = new ExoDatabaseProvider(this);
+
+    DownloadManager dm = new DownloadManager(this,
+        new DefaultDownloadIndex(dbProvider),
+        new DefaultDownloaderFactory(new CacheDataSource.Factory()
+            .setCache(new SimpleCache(downloadContentDirectory, evictor, dbProvider))
+            .setUpstreamDataSourceFactory(new DefaultDataSourceFactory(
+                this, Util.getUserAgent(this, "sharechat"))),
+            Executors.newSingleThreadExecutor()),
+        true);
   }
 
   @Override

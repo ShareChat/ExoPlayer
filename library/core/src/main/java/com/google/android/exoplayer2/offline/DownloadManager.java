@@ -286,7 +286,7 @@ public final class DownloadManager {
 
     pendingMessages = 1;
     internalHandler
-        .obtainMessage(MSG_INITIALIZE, notMetRequirements, /* unused */ 0, handleException ? 1 : 0)
+        .obtainMessage(MSG_INITIALIZE, notMetRequirements, handleException ? 1 : 0)
         .sendToTarget();
   }
 
